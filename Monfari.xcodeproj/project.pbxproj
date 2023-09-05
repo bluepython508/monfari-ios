@@ -7,18 +7,25 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B5AD2E352AA4CDF800506714 /* Repository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AD2E342AA4CDF800506714 /* Repository.swift */; };
 		B5AE61662AA369C5007B9BD1 /* MonfariApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AE61652AA369C5007B9BD1 /* MonfariApp.swift */; };
 		B5AE61682AA369C5007B9BD1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AE61672AA369C5007B9BD1 /* ContentView.swift */; };
 		B5AE616A2AA369C6007B9BD1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B5AE61692AA369C6007B9BD1 /* Assets.xcassets */; };
 		B5AE616D2AA369C6007B9BD1 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B5AE616C2AA369C6007B9BD1 /* Preview Assets.xcassets */; };
+		B5AE61742AA37A93007B9BD1 /* Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AE61732AA37A93007B9BD1 /* Types.swift */; };
+		B5AE61772AA37B2D007B9BD1 /* ULID in Frameworks */ = {isa = PBXBuildFile; productRef = B5AE61762AA37B2D007B9BD1 /* ULID */; };
+		B5AE61792AA37B6B007B9BD1 /* Id.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AE61782AA37B6B007B9BD1 /* Id.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B5AD2E342AA4CDF800506714 /* Repository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repository.swift; sourceTree = "<group>"; };
 		B5AE61622AA369C5007B9BD1 /* Monfari.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Monfari.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B5AE61652AA369C5007B9BD1 /* MonfariApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonfariApp.swift; sourceTree = "<group>"; };
 		B5AE61672AA369C5007B9BD1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B5AE61692AA369C6007B9BD1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B5AE616C2AA369C6007B9BD1 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		B5AE61732AA37A93007B9BD1 /* Types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Types.swift; sourceTree = "<group>"; };
+		B5AE61782AA37B6B007B9BD1 /* Id.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Id.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -26,6 +33,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B5AE61772AA37B2D007B9BD1 /* ULID in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -55,6 +63,9 @@
 				B5AE61672AA369C5007B9BD1 /* ContentView.swift */,
 				B5AE61692AA369C6007B9BD1 /* Assets.xcassets */,
 				B5AE616B2AA369C6007B9BD1 /* Preview Content */,
+				B5AE61732AA37A93007B9BD1 /* Types.swift */,
+				B5AE61782AA37B6B007B9BD1 /* Id.swift */,
+				B5AD2E342AA4CDF800506714 /* Repository.swift */,
 			);
 			path = Monfari;
 			sourceTree = "<group>";
@@ -83,6 +94,9 @@
 			dependencies = (
 			);
 			name = Monfari;
+			packageProductDependencies = (
+				B5AE61762AA37B2D007B9BD1 /* ULID */,
+			);
 			productName = Monfari;
 			productReference = B5AE61622AA369C5007B9BD1 /* Monfari.app */;
 			productType = "com.apple.product-type.application";
@@ -111,6 +125,9 @@
 				Base,
 			);
 			mainGroup = B5AE61592AA369C5007B9BD1;
+			packageReferences = (
+				B5AE61752AA37B2D007B9BD1 /* XCRemoteSwiftPackageReference "ULID" */,
+			);
 			productRefGroup = B5AE61632AA369C5007B9BD1 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -137,8 +154,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B5AE61742AA37A93007B9BD1 /* Types.swift in Sources */,
 				B5AE61682AA369C5007B9BD1 /* ContentView.swift in Sources */,
+				B5AD2E352AA4CDF800506714 /* Repository.swift in Sources */,
 				B5AE61662AA369C5007B9BD1 /* MonfariApp.swift in Sources */,
+				B5AE61792AA37B6B007B9BD1 /* Id.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -339,6 +359,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B5AE61752AA37B2D007B9BD1 /* XCRemoteSwiftPackageReference "ULID" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/yaslab/ULID.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B5AE61762AA37B2D007B9BD1 /* ULID */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B5AE61752AA37B2D007B9BD1 /* XCRemoteSwiftPackageReference "ULID" */;
+			productName = ULID;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B5AE615A2AA369C5007B9BD1 /* Project object */;
 }
