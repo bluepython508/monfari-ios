@@ -51,7 +51,6 @@ struct Amount: Codable, CustomStringConvertible, Equatable {
     
     init?(_ amount: Double, _ currency: Currency) {
         self.currency = currency
-        guard Double(Int(amount * 100)) == amount * 100 else { return nil }
         self.amount = Int(amount * 100)
     }
 

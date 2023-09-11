@@ -6,22 +6,18 @@
 //
 
 import SwiftUI
+import Network
 
 struct ContentView: View {
     @State var repo: Repository?
-    @State var connecting: Bool = false
-    func connect() {
+    func connect(to endpoint: NWEndpoint) {
         Task {
-            connecting = true;
-            repo = try await Repository(endpoint: .hostPort(host: "nomos.local", port: 9000))
-            connecting = false;
+            repo = try await Repository(endpoint: endpoint)
         }
     }
     func disconnect() {
-        Task {
-            repo?.disconnect()
-            repo = nil
-        }
+        repo?.disconnect()
+        repo = nil
     }
     var body: some View {
         if let repo = repo {
@@ -34,11 +30,35 @@ struct ContentView: View {
                         }
                     }
                     .navigationTitle("Accounts")
+                    .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                        disconnect()
+                    }
             }
-        } else if !connecting {
-            Button("Connect", action: connect)
         } else {
+            ConnectingView(connect: connect)
+        }
+    }
+}
+
+struct ConnectingView: View {
+    @State var host: String = "10.10.2.6"
+    @State var port: UInt16 = 9000
+    @State var connecting: Bool = false
+    let connect: (NWEndpoint) -> Void
+    var endpoint: NWEndpoint { .hostPort(host: .init(host), port: .init(rawValue: port)!) }
+    
+    var body: some View {
+        if connecting {
             ProgressView().progressViewStyle(.circular)
+        } else {
+            VStack {
+                Spacer()
+                Form {
+                    TextField("Host", text: $host)
+                    TextField("Port", value: $port, formatter: NumberFormatter()).keyboardType(.numberPad)
+                    Button("Connect") { connecting = true; connect(endpoint) }
+                }
+            }
         }
     }
 }
@@ -103,6 +123,7 @@ struct TransactionView: View {
     let inner: Inner
     @State var typ: Transaction.Typ? = nil
     @State var adding: Bool = false
+    @FocusState var focused: FocusedField?
 
     let dismiss: () -> Void
 
@@ -127,19 +148,24 @@ struct TransactionView: View {
             dismiss()
         }
     }
+    
+    enum FocusedField {
+        case amount, source, destination, newAmount, notes
+    }
 
     var body: some View {
         Form {
-            AmountField(out: $amount)
+            AmountField(out: $amount, focused: $focused, focusTag: .amount)
             switch inner {
-            case .received: Received(typ: $typ)
-            case .paid: Paid(typ: $typ)
+            case .received: Received(typ: $typ, focused: $focused)
+            case .paid: Paid(typ: $typ, focused: $focused)
             case .move: Move(typ: $typ)
-            case .convert: Convert(typ: $typ)
+            case .convert: Convert(typ: $typ, focused: $focused)
             }
             Section("Notes") {
                 TextField("Notes", text: $notes, axis: .vertical)
                     .lineLimit(2...)
+                    .focused($focused, equals: .notes)
             }
         }
         .toolbar {
@@ -151,7 +177,7 @@ struct TransactionView: View {
         .overlay {
             if adding { ProgressView() }
         }
-        Button("Add", action: addTransaction).disabled(!isValid || adding).buttonStyle(.bordered)
+        .task { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { focused = .amount }}
     }
     
     struct Received: View {
@@ -167,10 +193,11 @@ struct TransactionView: View {
         @State var src: String = ""
         @State var dst: Id<Account>? = nil
         @State var dstVirt: Id<Account>? = nil
+        var focused: FocusState<FocusedField?>.Binding
 
         var body: some View {
             Section {
-                TextField("Source", text: $src).onChange(of: src) { _ in updateTyp() }
+                TextField("Source", text: $src).focused(focused, equals: .source).onChange(of: src) { _ in updateTyp() }
                 AccountPicker(description: "Destination", type: .physical, id: $dst).onChange(of: dst) { _ in updateTyp() }
                 AccountPicker(description: "Destination", type: .virtual, id: $dstVirt).onChange(of: dstVirt) { _ in updateTyp() }
             }
@@ -190,10 +217,11 @@ struct TransactionView: View {
         @State var dst: String = ""
         @State var src: Id<Account>? = nil
         @State var srcVirt: Id<Account>? = nil
+        var focused: FocusState<FocusedField?>.Binding
 
         var body: some View {
             Section {
-                TextField("Destination", text: $dst).onChange(of: dst) { _ in updateTyp() }
+                TextField("Destination", text: $dst).focused(focused, equals: .destination).onChange(of: dst) { _ in updateTyp() }
                 AccountPicker(description: "Source", type: .physical, id: $src).onChange(of: src) { _ in updateTyp() }
                 AccountPicker(description: "Source", type: .virtual, id: $srcVirt).onChange(of: srcVirt) { _ in updateTyp() }
             }
@@ -226,8 +254,10 @@ struct TransactionView: View {
         }
 
         var body: some View {
-            AccountPicker(description: "Source", type: type, id: $src).onChange(of: src) { _ in updateTyp() }
-            AccountPicker(description: "Destination", type: type, id: $dst).onChange(of: dst) { _ in updateTyp() }
+            Section {
+                AccountPicker(description: "Source", type: type, id: $src).onChange(of: src) { _ in updateTyp() }
+                AccountPicker(description: "Destination", type: type, id: $dst).onChange(of: dst) { _ in updateTyp() }
+            }
         }
     }
     
@@ -246,9 +276,11 @@ struct TransactionView: View {
         @State var acc: Id<Account>?
         @State var accVirt: Id<Account>?
         
+        var focused: FocusState<FocusedField?>.Binding
+
         var body: some View {
             Section("Convert Into") {
-                AmountField(out: $newAmount).onChange(of: newAmount) { _ in updateTyp() }
+                AmountField(out: $newAmount, focused: focused, focusTag: .newAmount).onChange(of: newAmount) { _ in updateTyp() }
             }
             Section {
                 AccountPicker(description: "Account", type: .physical, id: $acc).onChange(of: acc) { _ in updateTyp() }
@@ -281,6 +313,8 @@ struct TransactionView: View {
         }
         @State var amount: Double = 0
         @State var currency: Currency = Currency.EUR
+        var focused: FocusState<FocusedField?>.Binding
+        let focusTag: FocusedField
         
         let amountFormatter = {
             var formatter = NumberFormatter()
@@ -291,8 +325,9 @@ struct TransactionView: View {
         var body: some View {
             HStack {
                 TextField("", value: $amount, formatter: amountFormatter)
+                    .focused(focused, equals: focusTag)
                     .frame(maxWidth: .infinity)
-                    .keyboardType(.numberPad)
+                    .keyboardType(.decimalPad)
                     .onChange(of: amount) { _ in updateAmount() }
                 Divider()
                 Picker("", selection: $currency) {
