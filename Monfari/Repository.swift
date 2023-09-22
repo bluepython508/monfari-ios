@@ -83,9 +83,13 @@ fileprivate struct Connection {
         return try await withCheckedThrowingContinuation { cont in
             conn.receiveMessage { data, ctx, isComplete, err in
                 assert(isComplete);
-                cont.resume(with: Result { try Connection.decoder.decode(T.self, from: data!) })
+                guard let data = data else { cont.resume(throwing: Error.emptyMessage); return }
+                cont.resume(with: Result { try Connection.decoder.decode(T.self, from: data) })
             }
         }
+    }
+    enum Error: Swift.Error {
+        case emptyMessage
     }
 }
 
@@ -100,8 +104,13 @@ class Repository: ObservableObject {
     
     @MainActor
     func run(command: Command) async throws {
-        try conn.send(command)
+        try conn.send(Message.command(command: command))
         accounts = try await conn.receive()
+    }
+    
+    func transactions(forAccount account: Id<Account>) async throws -> [Transaction] {
+        try conn.send(Message.transactions(account: account))
+        return try await conn.receive()
     }
     
     func disconnect() {

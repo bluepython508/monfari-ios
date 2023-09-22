@@ -49,15 +49,23 @@ struct Amount: Codable, CustomStringConvertible, Equatable {
         amount = (Int(match.output.whole)! * 100) + Int(match.output.decimal ?? "0")!
     }
     
-    init?(_ amount: Double, _ currency: Currency) {
+    init(_ amount: Int, _ currency: Currency) {
         self.currency = currency
-        self.amount = Int(amount * 100)
+        self.amount = amount
     }
 
     var description: String {
-        let whole = amount / 100
-        let decimal = amount % 100
+        let (whole, decimal) = amount.quotientAndRemainder(dividingBy: 100)
         return "\(whole).\(String(format: "%02d", decimal)) \(currency.name)"
+    }
+    
+    var formatted: String {
+        let (whole, decimal) = amount.quotientAndRemainder(dividingBy: 100)
+        let formatter = NumberFormatter()
+        formatter.usesGroupingSeparator = true
+        formatter.groupingSize = 3
+        formatter.groupingSeparator = " "
+        return "\(formatter.string(from: NSNumber(value: whole))!).\(String(format: "%02d", decimal)) \(currency.name)"
     }
     
     func encode(to encoder: Encoder) throws {
@@ -125,7 +133,7 @@ struct Account: Codable {
     }
 }
 
-struct Transaction: Encodable {
+struct Transaction: Codable, Identifiable {
     let id: Id<Self>
     let notes: String
     let amount: Amount
@@ -171,6 +179,37 @@ struct Transaction: Encodable {
         }
     }
     
+    init(from decoder: Decoder) throws {
+        var container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Id<Self>.self, forKey: .id)
+        notes = try container.decode(String.self, forKey: .notes)
+        amount = try container.decode(Amount.self, forKey: .amount)
+        switch try container.decode(String.self, forKey: .type) {
+        case "Received":
+            type = .received(src: try container.decode(String.self, forKey: .src), dst: try container.decode(Id<Account>.self, forKey: .dst), dstVirt: try container.decode(Id<Account>.self, forKey: .dstVirt))
+        case "Paid":
+            type = .paid(dst: try container.decode(String.self, forKey: .dst), src: try container.decode(Id<Account>.self, forKey: .src), srcVirt: try container.decode(Id<Account>.self, forKey: .srcVirt))
+        case "MovePhys":
+            type = .movePhys(src: try container.decode(Id<Account>.self, forKey: .src), dst: try container.decode(Id<Account>.self, forKey: .dst))
+        case "MoveVirt":
+            type = .moveVirt(src: try container.decode(Id<Account>.self, forKey: .src), dst: try container.decode(Id<Account>.self, forKey: .dst))
+        case "Convert":
+            type = .convert(newAmount: try container.decode(Amount.self, forKey: .newAmount), acc: try container.decode(Id<Account>.self, forKey: .acc), accVirt: try container.decode(Id<Account>.self, forKey: .accVirt))
+        default: throw Error.unknownType
+        }
+    }
+
+    init(id: Id<Self>, notes: String, amount: Amount, type: Typ) {
+        self.id = id
+        self.notes = notes
+        self.amount = amount
+        self.type = type
+    }
+    
+    enum Error: Swift.Error {
+        case unknownType
+    }
+    
     enum CodingKeys: String, CodingKey {
         case id
         case notes
@@ -206,3 +245,12 @@ enum Command: Encodable {
     }
 }
 
+enum Message: Encodable {
+    case command(command: Command)
+    case transactions(account: Id<Account>)
+    
+    enum CodingKeys: String, CodingKey {
+        case command = "Command";
+        case transactions = "Transactions";
+    }
+}

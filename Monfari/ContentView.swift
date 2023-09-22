@@ -12,7 +12,10 @@ struct ContentView: View {
     @State var repo: Repository?
     func connect(to endpoint: NWEndpoint) {
         Task {
-            repo = try await Repository(endpoint: endpoint)
+            let repo = try await Repository(endpoint: endpoint)
+            DispatchQueue.main.async {
+                self.repo = repo
+            }
         }
     }
     func disconnect() {
@@ -21,9 +24,8 @@ struct ContentView: View {
     }
     var body: some View {
         if let repo = repo {
-            NavigationView {
+            NavigationStack {
                 RepoView()
-                    .environmentObject(repo)
                     .toolbar {
                         ToolbarItem(placement: .destructiveAction) {
                             Button("Disconnect", action: disconnect)
@@ -33,7 +35,8 @@ struct ContentView: View {
                     .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
                         disconnect()
                     }
-            }
+            }.environmentObject(repo)
+
         } else {
             ConnectingView(connect: connect)
         }
@@ -65,9 +68,9 @@ struct ConnectingView: View {
 
 struct RepoView: View {
     @EnvironmentObject var repo: Repository
-    @State var transactionType: TransactionView.Inner? = nil
+    @State var transactionType: TransactionCreateView.Inner? = nil
     
-    func transaction(_ type: TransactionView.Inner) -> () -> Void {
+    func transaction(_ type: TransactionCreateView.Inner) -> () -> Void {
         {
             transactionType = type
         }
@@ -76,18 +79,24 @@ struct RepoView: View {
     var body: some View {
         VStack {
             List(repo.accounts, id: \.id) { acc in
-                VStack {
-                    HStack {
-                        Text(acc.name)
-                        Spacer()
-                        Text(acc.typ.rawValue).foregroundColor(.gray).fontWeight(.light)
-                    }
-                    HStack {
-                        ForEach(acc.current.sorted(on: \.key), id: \.key) {
-                            Text($0.value.description)
+                NavigationLink(value: acc.id) {
+                    VStack {
+                        HStack {
+                            Text(acc.name)
+                            Spacer()
+                            Text(acc.typ.rawValue).foregroundColor(.gray).fontWeight(.light)
+                        }
+                        HStack {
+                            ForEach(acc.current.filter { $0.value.amount > 0 }.sorted(on: \.key), id: \.key) {
+                                Spacer()
+                                Text($0.value.formatted)
+                            }
+                            Spacer()
                         }
                     }
                 }
+            }.navigationDestination(for: Id<Account>.self) { id in
+                AccountDetailView(account: repo[id]!)
             }
             Spacer()
             HStack {
@@ -108,13 +117,39 @@ struct RepoView: View {
             }.buttonStyle(.bordered)
         }.popover(item: $transactionType) { type in
             NavigationView {
-                TransactionView(inner: type, dismiss: { transactionType = nil })
+                TransactionCreateView(inner: type, dismiss: { transactionType = nil })
             }
         }
     }
 }
 
-struct TransactionView: View {
+struct AccountDetailView: View {
+    @EnvironmentObject var repo: Repository
+    let account: Account
+    @State var transactions: [Transaction] = []
+    
+    var body: some View {
+        VStack {
+            HStack {
+                ForEach(account.current.filter { $0.value.amount > 0 }.sorted(on: \.key), id: \.key) {
+                    Spacer()
+                    Text($0.value.formatted)
+                }
+                Spacer()
+            }
+            List(transactions) { transaction in
+                Text(transaction.amount.description)
+            }.task {
+                let transactions = try! await repo.transactions(forAccount: account.id);
+                DispatchQueue.main.async {
+                    self.transactions = transactions
+                }
+            }
+        }.navigationTitle(account.name)
+    }
+}
+
+struct TransactionCreateView: View {
     @EnvironmentObject var repo: Repository
 
     let id: Id<Transaction> = Id.generate()
@@ -145,7 +180,9 @@ struct TransactionView: View {
         Task {
             adding = true
             try await repo.run(command: .addTransaction(Transaction(id: id, notes: notes, amount: amount, type: typ)))
-            dismiss()
+            DispatchQueue.main.async {
+                dismiss()
+            }
         }
     }
     
@@ -309,7 +346,7 @@ struct TransactionView: View {
         @Binding var out: Amount?
         func updateAmount() {
             guard amount > 0 else { out = nil; return }
-            out = Amount(amount, currency)!
+            out = Amount(Int((amount * 100).rounded()), currency)
         }
         @State var amount: Double = 0
         @State var currency: Currency = Currency.EUR
@@ -317,11 +354,11 @@ struct TransactionView: View {
         let focusTag: FocusedField
         
         let amountFormatter = {
-            var formatter = NumberFormatter()
-            formatter.maximumFractionDigits = 2
-            return formatter
+            var fmt = NumberFormatter()
+            fmt.maximumFractionDigits = 2
+            return fmt
         }()
-        
+
         var body: some View {
             HStack {
                 TextField("", value: $amount, formatter: amountFormatter)
