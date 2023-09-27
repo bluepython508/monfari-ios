@@ -41,7 +41,11 @@ fileprivate func consonant(_ src: UInt16) -> String {
     consonants[Int(src & 0b1111)]
 }
 
-struct Id<T>: Codable, Equatable, Hashable {
+struct Id<T>: Codable, Equatable, Hashable, Comparable {
+    static func < (lhs: Id<T>, rhs: Id<T>) -> Bool {
+        lhs.id < rhs.id
+    }
+    
     let id: String;
     
     init(_ id: String) {

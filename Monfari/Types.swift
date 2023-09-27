@@ -180,7 +180,7 @@ struct Transaction: Codable, Identifiable {
     }
     
     init(from decoder: Decoder) throws {
-        var container = try decoder.container(keyedBy: CodingKeys.self)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(Id<Self>.self, forKey: .id)
         notes = try container.decode(String.self, forKey: .notes)
         amount = try container.decode(Amount.self, forKey: .amount)
@@ -222,6 +222,20 @@ struct Transaction: Codable, Identifiable {
         case newAmount = "new_amount"
         case acc
         case accVirt = "acc_virt"
+    }
+    
+    func description(forAccount acc: Id<Account>, inRepo repo: Repository) -> String {
+        let desc: String;
+        switch type {
+        case .received(let src, dst: _, dstVirt: _): desc = "received from \(src)"
+        case .paid(let dst, src: _, srcVirt: _): desc = "paid to \(dst)"
+        case .movePhys(let src, let dst), .moveVirt(let src, let dst):
+            let (dir, other) = src == acc ? ("to", dst) : ("from", src)
+            desc = "moved \(dir) \(repo[other]?.name ?? "<Unknown Account>")"
+        case .convert(let newAmount, acc: _, accVirt: _):
+            desc = "converted to \(newAmount.formatted)"
+        }
+        return "\(amount.formatted) \(desc)"
     }
 }
 

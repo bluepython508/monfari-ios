@@ -10,16 +10,15 @@ import Network
 
 struct ContentView: View {
     @State var repo: Repository?
-    func connect(to endpoint: NWEndpoint) {
+    func connect(to url: URL) {
         Task {
-            let repo = try await Repository(endpoint: endpoint)
+            let repo = try await Repository(baseUrl: url)
             DispatchQueue.main.async {
                 self.repo = repo
             }
         }
     }
     func disconnect() {
-        repo?.disconnect()
         repo = nil
     }
     var body: some View {
@@ -32,9 +31,6 @@ struct ContentView: View {
                         }
                     }
                     .navigationTitle("Accounts")
-                    .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-                        disconnect()
-                    }
             }.environmentObject(repo)
 
         } else {
@@ -44,11 +40,9 @@ struct ContentView: View {
 }
 
 struct ConnectingView: View {
-    @State var host: String = "10.10.2.6"
-    @State var port: UInt16 = 9000
+    @State var url: String = "http://10.10.2.6:9000"
     @State var connecting: Bool = false
-    let connect: (NWEndpoint) -> Void
-    var endpoint: NWEndpoint { .hostPort(host: .init(host), port: .init(rawValue: port)!) }
+    let connect: (URL) -> Void
     
     var body: some View {
         if connecting {
@@ -57,9 +51,8 @@ struct ConnectingView: View {
             VStack {
                 Spacer()
                 Form {
-                    TextField("Host", text: $host)
-                    TextField("Port", value: $port, formatter: NumberFormatter()).keyboardType(.numberPad)
-                    Button("Connect") { connecting = true; connect(endpoint) }
+                    TextField("Repo", text: $url)
+                    Button("Connect") { connecting = true; connect(URL(string: url)!) }
                 }
             }
         }
@@ -78,7 +71,7 @@ struct RepoView: View {
     
     var body: some View {
         VStack {
-            List(repo.accounts, id: \.id) { acc in
+            List(repo.accounts.filter { $0.enabled }.sorted(by: { $0.typ != $1.typ ? $0.typ != .physical : $0.id < $1.id }), id: \.id) { acc in
                 NavigationLink(value: acc.id) {
                     VStack {
                         HStack {
@@ -137,8 +130,11 @@ struct AccountDetailView: View {
                 }
                 Spacer()
             }
-            List(transactions) { transaction in
-                Text(transaction.amount.description)
+            List(transactions.sorted(on: \.id).reversed()) { transaction in
+                VStack {
+                    Text(transaction.description(forAccount: account.id, inRepo: repo))
+                    Text(transaction.notes).foregroundColor(.gray).fontWeight(.light)
+                }
             }.task {
                 let transactions = try! await repo.transactions(forAccount: account.id);
                 DispatchQueue.main.async {
@@ -335,7 +331,7 @@ struct TransactionCreateView: View {
         var body: some View {
             Picker(description, selection: $id) {
                 Text("").foregroundColor(.gray).tag(nil as Id<Account>?).disabled(true)
-                ForEach(repo.accounts.filter { $0.typ == type || type == nil }, id: \.id) { acc in
+                ForEach(repo.accounts.filter { ($0.typ == type || type == nil) && $0.enabled }, id: \.id) { acc in
                     Text(acc.name).tag(acc.id as Id<Account>?)
                 }
             }.pickerStyle(.navigationLink)
