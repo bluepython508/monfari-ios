@@ -40,7 +40,7 @@ struct ContentView: View {
 }
 
 struct ConnectingView: View {
-    @State var url: String = "http://10.10.2.6:9000"
+    @State var url: String = "http://10.10.2.1:9000"
     @State var connecting: Bool = false
     let connect: (URL) -> Void
     
